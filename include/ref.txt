@@ -1,0 +1,515 @@
+#include <LCD_I2C.h>
+LCD_I2C lcd(0x27, 20, 4);  // Default address of most PCF8574 modules, change according
+
+#include "RTClib.h"
+//char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+char daysOfTheWeek[7][12] = { "MGG", "SNN", "SLS", "RBU", "KMS", "JMT", "SBT" };
+//char NamaBulan = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"};
+RTC_DS3231 rtc;
+int thn, bln, tgl, hr, jam, mnt, dtk;
+String hari;
+String sAlarm, sLastAlarm;
+String sHariKerja = "OFF";
+String sPiket = "RN/MY/IC";
+String sTamu = "LAZADA";
+String sDinas = "AJN";  //tugas vega ambil jaknot, potong akrilik, belanja, dst
+
+#include "DHT.h"
+#define DHTPIN D7
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+float t, h;
+int mv;
+
+#include <SoftwareSerial.h>
+#include <DFPlayer_Mini_Mp3.h>
+SoftwareSerial mySerial(D6, D5);  // RX, TX
+#define BUSY D3
+
+#include <Adafruit_NeoPixel.h>
+#define PIN_WS2812B D8
+#define NUM_PIXELS 8
+Adafruit_NeoPixel WS2812B(NUM_PIXELS, PIN_WS2812B, NEO_GRB + NEO_KHZ800);
+struct warna {
+  int r;
+  int g;
+  int b;
+};
+warna merah = { 255, 0, 0 };
+warna jingga = { 255, 130, 0 };
+
+#include <Keypad_I2C.h>
+#include <Keypad.h>
+#include <Wire.h>
+#define I2CADDR 0x20
+const byte ROWS = 4;  //four rows
+const byte COLS = 4;  //three columns
+char keys[ROWS][COLS] = {
+  { '1', '2', '3', 'A' },
+  { '4', '5', '6', 'B' },
+  { '7', '8', '9', 'C' },
+  { '*', '0', '#', 'D' }
+};
+byte rowPins[ROWS] = { 3, 2, 1, 0 };  //connect to the row pinouts of the keypad
+byte colPins[COLS] = { 7, 6, 5, 4 };  //connect to the column pinouts of the keypad
+TwoWire *jwire = &Wire;               //test passing pointer to keypad lib
+Keypad_I2C kpd(makeKeymap(keys), rowPins, colPins, ROWS, COLS, I2CADDR, PCF8574, jwire);
+//Keypad_I2C kpd( makeKeymap(keys), rowPins, colPins, ROWS, COLS, I2CADDR );
+int keyint = 0;
+char keyg = '-';
+
+#define LED D4
+#define Buzzer D0
+#define Mic A0
+bool ledState = LOW;
+bool idle = true;
+bool harikerja;
+
+//blm keypad
+//iot
+//connect wifi
+//serial bridge  ke outdoor
+//animasi led
+//alarm suhu
+//alarm db level
+//global task to every client
+//kasih makan ikan
+//sensor PIR
+//peringatan menuju adzan
+//countdown animasi led / alarm
+//p10 text alarm
+
+/*pinout 
+D0 buzzer (ini bisa jadi makan ikan)
+D1 i2c
+D2 i2c
+D3 busy
+D4 internal led
+D5 //soft ser rx? (ini bisa jadi sensor pir)
+D6 //soft ser tx? 
+D7 //dht11
+D8 //led bar
+A0 //mic
+*/
+int led_merah[] = { 255, 0, 0 };
+int led_jingga[] = { 255, 130, 0 };
+int led_kuning[] = { 255, 255, 0 };
+int led_hijau[] = { 0, 255, 0 };
+int led_biru[] = { 0, 0, 255 };
+int led_ungu[] = { 170, 0, 170 };
+int led_cyan[] = { 0, 170, 255 };
+int led_putih[] = { 255, 255, 255 };
+int led_magenta[] = { 255, 120, 255 };
+int led_hitam[] = { 0, 0, 0 };
+
+//defisini warna led kurir
+//cod = merah
+//lazada = biru
+//instant = hijau
+//antaraja = biru kedip
+//sicepat = merah kedip
+//paxel =
+//wahana
+//tamu lainnya
+//
+
+
+void led_init() {
+
+  WS2812B.clear();
+  WS2812B.show();
+  WS2812B.setBrightness(7);
+  WS2812B.setPixelColor(0, WS2812B.Color(255, 0, 0));  //merah
+  //WS2812B.setPixelColor(0, WS2812B.Color(merah.r, merah.g, merah.b));  //me
+  WS2812B.setPixelColor(1, WS2812B.Color(255, 130, 0));    //jingga
+  WS2812B.setPixelColor(2, WS2812B.Color(255, 225, 0));    //kuning
+  WS2812B.setPixelColor(3, WS2812B.Color(0, 255, 0));      //hijau
+  WS2812B.setPixelColor(4, WS2812B.Color(0, 0, 255));      //biru
+  WS2812B.setPixelColor(5, WS2812B.Color(170, 0, 170));    //ungu
+  WS2812B.setPixelColor(6, WS2812B.Color(0, 170, 255));    //cyan
+  WS2812B.setPixelColor(7, WS2812B.Color(255, 255, 240));  //putih
+  //magenta 255 120 255
+  delay(100);
+  WS2812B.show();
+}
+void ledout(int col[]) {
+  WS2812B.clear();
+  for (int i = 0; i < 7; i++) {
+    WS2812B.setPixelColor(i, WS2812B.Color(col[0], col[1], col[2]));
+  }
+  WS2812B.show();
+}
+
+long firstPixelHue = 0;
+void rainbow() {
+  firstPixelHue += 10;
+  if (firstPixelHue > 65536) {
+    firstPixelHue = 0;
+  }
+  WS2812B.rainbow(firstPixelHue);
+  WS2812B.show();
+}
+void colorWipe(uint32_t color) {
+  for (int i = 0; i < WS2812B.numPixels(); i++) {  // For each pixel in strip...
+    WS2812B.setPixelColor(i, color);               //  Set pixel's color (in RAM)
+    WS2812B.show();                                //  Update strip to match
+    //delay(wait);                                 //  Pause for a moment
+  }
+}
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  Serial.println("Timer Global V1.1");
+  lcd_init();
+  rtc.begin();
+  dht.begin();
+  io_init();
+  WS2812B.begin();
+  led_init();
+  dfplayer_init();
+  jwire->begin();
+  kpd.begin();
+  mp3_play(27);
+  delay(100);
+  while (digitalRead(BUSY) == LOW) {
+    //Serial.println("tgg");
+    delay(100);
+  }
+  //Serial.println("brs");
+  digitalWrite(LED, LOW);
+  digitalWrite(Buzzer, HIGH);
+  delay(500);
+  digitalWrite(LED, HIGH);
+  digitalWrite(Buzzer, LOW);
+  delay(100);
+  //rtc.adjust(DateTime(2024, 6, 15, 20, 56, 0));
+}
+
+unsigned long previousMillis = 0;
+const long interval = 1000;
+char key, lastKey;
+
+void keyAction() {
+  tampil2004();
+  switch (lastKey) {
+    case 'A':
+      mp3_play(29);
+      break;
+    case 'B':
+      mp3_play(30);
+      break;
+    case 'C':
+      mp3_play(31);
+      break;
+    case 'D':
+      mp3_play(32);
+      break;
+    case '1':
+      playvoice(57);
+      break;
+    case '2':
+      break;
+    case '3':
+      break;
+    case '4':
+      break;
+    case '5':
+      break;
+    case '6':
+      break;
+    case '7':
+      break;
+    case '8':
+      break;
+    case '9':
+      break;
+    case '0':
+      break;
+    case '*':
+      break;
+    case '#':
+      break;
+  }
+}
+
+void loop() {
+
+  key = kpd.getKey();
+  if (key) {
+    lastKey = key;
+    keyAction();
+  }
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    if (ledState == LOW) {
+      ledState = HIGH;
+      ledout(led_merah);
+    } else {
+      ledState = LOW;
+      ledout(led_biru);
+    }
+    digitalWrite(LED, ledState);
+
+    readRTC();
+    readDHT();
+    readMIC();
+    checkAlarm();
+
+    if (jam > 8 && jam < 16) {  //if hari senin-jumat jam 8-16
+      harikerja = true;
+      sHariKerja = "ON ";
+    } else {
+      harikerja = false;
+      sHariKerja = "OFF";
+    }
+
+    tampil2004();
+    //debug();
+  }
+}
+
+void readMIC() {
+  mv = analogRead(Mic);
+}
+
+void readDHT() {
+  t = dht.readTemperature();
+  h = dht.readHumidity();
+}
+void playvoice(int x) {  //y1 = tamu y0 = alarm
+  mp3_play(27);          //intro
+  delay(200);
+  while (digitalRead(BUSY) == LOW) {
+    delay(100);
+  }
+  mp3_play(x);  //prog
+  delay(200);
+  while (digitalRead(BUSY) == LOW) {
+    delay(100);
+  }
+  mp3_play(28);  //outro
+}
+void playvoicetamu() {}
+void readRTC() {
+  DateTime now = rtc.now();
+  thn = now.year();
+  bln = now.month();
+  tgl = now.day();
+  hr = now.dayOfTheWeek();
+  hari = (daysOfTheWeek[now.dayOfTheWeek()]);
+  jam = now.hour();
+  mnt = now.minute();
+  dtk = now.second();
+}
+void checkAlarm() {
+  //if (dtk == 00 || dtk == 20 || dtk == 40) { //
+  //  playvoice(48);
+  //mp3_play(27);
+  //}
+
+  //alarm tiap hari
+  if (mnt == 15 && dtk == 0) { //istirahat sejenak
+    playvoice(70); //sebelumnya 57
+  }
+
+  if (mnt == 45 && dtk == 0) { //cek chat dan resi
+    playvoice(71);
+  }
+
+  if (jam == 8 && mnt == 2 && dtk == 0) {  //doa pagi // yel yel selamat pagi
+    mp3_play(52);
+  }
+  if (jam == 8 && mnt == 5 && dtk == 0) {  //saatnya mulai bekerja
+    mp3_play(53);
+  }
+
+  if (jam == 8 && mnt == 10 && dtk == 0) {  //makan ikan pagi
+    playvoice(58);
+  }
+  if (jam == 15 && mnt == 30 && dtk == 0) {  //makan ikan sore
+    playvoice(58);
+  }
+
+  if (jam == 8 && mnt == 30 && dtk == 0) {  //cek kesehatan pelanggaran
+    playvoice(61);
+  }
+  if (jam == 9 && mnt == 30 && dtk == 0) {  //cek komplain
+    playvoice(62);
+  }
+  if (jam == 10 && mnt == 30 && dtk == 0) {  //cek chat pembeli
+    playvoice(64);
+  }
+
+  if (jam == 9 && mnt == 0 && dtk == 0) {  //alarm notif jam 9 saatnya mulai bekerja
+    mp3_play(72);
+  }
+  if (jam == 10 && mnt == 0 && dtk == 0) {  //alarm notif jam 10
+    mp3_play(73);
+  }
+  if (jam == 11 && mnt == 0 && dtk == 0) {  //alarm notif jam 11
+    mp3_play(74);
+  }
+  if (jam == 11 && mnt == 55 && dtk == 0) {  //menuju istirahat/dzuhur 12
+    mp3_play(75);
+  }
+  if (jam == 12 && mnt == 59 && dtk == 0) {  //selesai istirahat 13
+    mp3_play(76);
+  }
+  if (jam == 14 && mnt == 0 && dtk == 0) {  //persiapan daftar kurir 14
+    playvoice(46);
+  }
+  if (jam == 15 && mnt == 0 && dtk == 0) {  //siapkan daftar PO & pembayaran 15
+    playvoice(78);
+  }
+  if (jam == 15 && mnt == 20 && dtk == 0) {  //menuju pulang, saatnya mengisi tabel tugas masing masing
+    mp3_play(79);                            //sementara
+  }
+  if (jam == 15 && mnt == 59 && dtk == 59) {  //selamat pulang
+    mp3_play(44);
+  }
+  //=============
+  //alarm mingguan
+  if (hr == 2 && jam == 8 && mnt == 30 && dtk == 0) {  //selasa saatnya tinta printer
+    playvoice(80);
+  }
+  if (hr == 3 && jam == 13 && mnt == 1 && dtk == 0) {  //rabu saatnya list kebutuhan eazyfood
+    playvoice(81);
+  }
+  if (hr == 4 && jam == 13 && mnt == 1 && dtk == 0) {  //kamis saatnya list kebutuhan prototype
+    playvoice(82);
+  }
+  if (hr == 5 && jam == 13 && mnt == 1 && dtk == 0) {  //jumat saatnya panasin genset
+    playvoice(83);
+  }
+  //if (hr == 5 && jam == 13 && mnt == 1 && dtk == 0) {  //bersihin aquarium,kipas, dkk
+  // playvoice(51);
+  //}
+}
+void debug() {
+  DateTime now = rtc.now();
+  Serial.print(now.year(), DEC);
+  Serial.print('/');
+  Serial.print(now.month(), DEC);
+  Serial.print('/');
+  Serial.print(now.day(), DEC);
+  Serial.print(" (");
+  Serial.print(now.dayOfTheWeek());
+  Serial.print(") ");
+  Serial.print(now.hour(), DEC);
+  Serial.print(':');
+  Serial.print(mnt);
+  Serial.print(':');
+  Serial.print(now.second());
+  Serial.println();
+  //Serial.println("loop");
+}
+void tampil() {
+  DateTime now = rtc.now();
+  char dateBuffer[12];
+  char timeBuffer[12];
+  lcd.clear();
+
+  sprintf(dateBuffer, "%02u/%02u/%02u ", (now.year() - 2000), now.month(), now.day());
+  sprintf(timeBuffer, "%02u:%02u:%02u ", now.hour(), now.minute(), now.second());
+  lcd.setCursor(0, 0);
+  lcd.print(dateBuffer);
+
+  lcd.setCursor(11, 0);
+  lcd.print(t, 1);
+  lcd.print(char(223));
+
+  lcd.setCursor(0, 1);
+  lcd.print(timeBuffer);
+  if (harikerja) {
+    lcd.print("Y");
+  } else {
+    lcd.print("N");
+  }
+
+  lcd.setCursor(11, 1);
+  lcd.print(h, 1);
+  lcd.print("%");
+
+  lcd.setCursor(0, 2);
+  lcd.print(analogRead(Mic));
+}
+void tampil2004() {
+  DateTime now = rtc.now();
+  char dateBuffer[12];
+  char timeBuffer[12];
+  char mvBuffer[4];
+  //lcd.clear();
+
+  sprintf(dateBuffer, "%02u/%02u ", now.month(), now.day());
+  sprintf(timeBuffer, "%02u:%02u:%02u", now.hour(), now.minute(), now.second());
+  lcd.setCursor(0, 0);
+  lcd.print(dateBuffer);
+  lcd.print(timeBuffer);
+  lcd.setCursor(17, 0);
+  lcd.print(daysOfTheWeek[now.dayOfTheWeek()]);
+
+  lcd.setCursor(0, 1);
+  lcd.print(t, 1);
+  lcd.print(char(223));
+
+  lcd.setCursor(6, 1);
+  lcd.print(h, 1);
+  lcd.print("%");
+  lcd.print(" ");
+  sprintf(mvBuffer, "%04u", mv);
+  lcd.print(mvBuffer);
+
+  lcd.setCursor(17, 1);
+  lcd.print("MG1");
+
+  lcd.setCursor(0, 2);
+  lcd.print("P:");
+  lcd.print(sPiket);
+  lcd.setCursor(17, 2);
+  lcd.print(sDinas);  //Antar JakNot, Antar Kurir Jauh
+
+  lcd.setCursor(0, 3);
+  lcd.print(lastKey);
+  lcd.setCursor(2, 3);
+  lcd.print(sTamu);
+  lcd.setCursor(17, 3);
+  lcd.print(sHariKerja);
+
+  //lcd 2004
+  //00 efs/ ip address
+  //01 tgl,jam,suhu,humi
+  //02 piket, tgl 23 h-, dinas
+  //03 last alarm
+  //void playbuzzled
+}
+
+void dfplayer_init() {
+  mySerial.begin(9600);
+  mp3_set_serial(mySerial);  //set softwareSerial for DFPlayer-mini mp3 module
+  delay(100);                //wait 1ms for mp3 module to set volume
+  mp3_set_volume(30);
+  delay(100);
+}
+void lcd_init() {
+  lcd.begin();  // If you are using more I2C devices using the Wire library use lcd.begin(false)
+  lcd.backlight();
+  //lcd.noBacklight();
+  lcd.print("Eazyfast Store");  // You can make spaces using well... spaces
+  lcd.setCursor(0, 1);          // Or setting the cursor in the desired position.
+  lcd.print("Bell Outdoor");
+  delay(2000);
+  lcd.clear();
+}
+void io_init() {
+  pinMode(LED, OUTPUT);
+  pinMode(Buzzer, OUTPUT);
+  pinMode(BUSY, INPUT);
+  pinMode(Mic, INPUT);
+}
+//void alarm
+//checkAlarmDaily checkAlarmHourly checkAlarmMinutely /fungsi_alarm_ideal //daily_alarm1(jm,mnt,dtk,flag)
+
+void playbell(int x) {  //untuk tamu
+}

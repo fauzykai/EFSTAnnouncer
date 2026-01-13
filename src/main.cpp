@@ -72,12 +72,12 @@ void setup()
 
 void loop()
 {
-  //cek hanya tiap menit
+  //cek hanya tiap menit (detik 1-3)
   now = rtc.now(); // read RTC
 
+  //cek hanya saat perubahan jam kerja (menit 0)
   if (now.dayOfTheWeek() >= 0 && now.dayOfTheWeek() <= 5 && now.hour() >=7 && now.hour() <= 17){jamKerja=true;}
-  else if (now.dayOfTheWeek() == 6 && now.hour() >= 7 && now.hour() <= 13){jamKerja=true;}
-  else {jamKerja=false;}
+  else if (now.dayOfTheWeek() == 6 && now.hour() >= 7 && now.hour() <= 13){jamKerja=true;} else {jamKerja=false;}
 
   if (jamKerja){
     cekAlarm(now);
@@ -103,7 +103,7 @@ if(x.minute()==26 && x.second()<=3){playvoice(71);} //cek chat resi
 void cekAlarm(DateTime x){
   for (int i = 0; i<jumlahAlarm;i++){
     if (x.hour()==alarms[i].jam && x.minute()==alarms[i].menit && x.second()<=3)
-        {playvoice(alarms->audio);}
+        {playvoice(alarms[i].audio);}
   }
 }
 
@@ -144,13 +144,13 @@ void debug() {
 }
 
 void playvoice(int x) {  //y1 = tamu y0 = alarm
-  myDFPlayer.play(28); //intro
+  myDFPlayer.playMp3Folder(27); //intro
   delay(200);
   while (digitalRead(BUSY) == LOW) {delay(100);}
   myDFPlayer.playMp3Folder(x);  //prog
   delay(200);
   while (digitalRead(BUSY) == LOW) {delay(100);}
-  myDFPlayer.play(29); //outro
+  myDFPlayer.play(28); //outro
 }
 
 void readRTC() {
