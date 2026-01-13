@@ -1,0 +1,33 @@
+nol,
+satu,
+dua,
+tiga, 
+empat,
+lima,
+enam,
+tujuh,
+delapan,
+sembilan,
+sepuluh,
+bintang,
+pagar,
+A,
+B,
+C,
+D,
+Halo, saya mau belanja C O D Toko, belanja C O D Toko
+Halo, saya kurir Lazada, kurir Lazada
+Halo, saya kurir Antar Aja, kurir Antar Aja
+Halo, saya kurir Shopi, kurir Shopi
+Halo, saya kurir Instant, kurir instant
+Halo, saya kurir Wahana, kurir Wahana
+Halo, paket return Izifes, return Izifes
+Halo, paket untuk rumah Dahlia, paket untuk Dahlia
+Halo, saya tamu Bu Uncu dan Pak dadan
+Halo, saya murid LES Larifa, LES Larifa
+intro
+outro
+Baik, mohon tunggu sebentar ya
+Baik, mohon tunggu sebentar ya, kami ke depan sekarang
+Pak, mohon tunggu sebentar, ada paket tertinggal nih
+Panggilan, Kepada anggota izifes
