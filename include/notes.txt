@@ -1,13 +1,12 @@
-fitur cek alarm pakai Timer
 cek alarm tiap detik = 01-03 saja
 
 tambah jws. alarm -5 menit
 read jws tiap ganti hari & boot
 siapkan print ucapan 50 lembar
 saatnya piket sesi 1, 2a 2b
+cek tinta sebelum print
 
-
-read suhu
+read suhu?
 
 read rfid absen + sapa napa
 koneksi api ke database app.Eazyfast
