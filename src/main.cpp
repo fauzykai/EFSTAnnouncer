@@ -1,4 +1,9 @@
+//belum readrfid -> write DB via API
+
 #include <Arduino.h>
+
+#include <ESP8266WiFi.h>
+const char* ssid = "37L3"; const char* password = "74737970";
 
 #include <LiquidCrystal_I2C.h>
 LiquidCrystal_I2C lcd(0x27,20,4);
@@ -12,9 +17,7 @@ DateTime now;
 bool jamKerja;
 
 #include "PrayerTimes.h"
-//static const int DAY   = 13;
-//static const int MONTH = 1;
-//static const int YEAR  = 2026;
+//static const int DAY   = 13; static const int MONTH = 1; static const int YEAR  = 2026;
 int DAY,MONTH,YEAR;
 int JDz,MAs,JAs,MDz;
 int IqmJDz,IqmJAs,IqmMDz,IqmMAs,Iqm=-3;
@@ -35,8 +38,8 @@ Alarm alarms[] = {
   {15,30,88}, //print kartu ucapan
   {15,55,86}, //piket sesi 2b
   {15,59,44}, //pulang
-  {0,0,0},//reserve utk iqmdz
-  {0,0,0}//reserve utk iqmas
+  {0,0,87},//reserve utk iqmdz
+  {0,0,87}//reserve utk iqmas
   //{5,25,52},
   //IqmDz
   //IqmAs
@@ -92,11 +95,16 @@ void setup()
   lcd.setCursor(0,0);
   lcd.print("EFST Announcer V2");
 
+  WiFi.begin(ssid, password);
+  Serial.print("Menghubungkan ke WiFi"); while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  Serial.print("IP Address: "); Serial.println(WiFi.localIP());
+
+  //blm autocalculate when day change
   now = rtc.now();
   DAY=now.day();MONTH=now.month();YEAR=now.year();
   printCity("Bandung",-6.973415,107.7545838,420);
-  alarms[13]={IqmJDz,IqmMDz,0}; //write
-  alarms[14]={IqmJAs,IqmMAs,0};
+  alarms[13]={IqmJDz,IqmMDz,87}; //write
+  alarms[14]={IqmJAs,IqmMAs,87};
   //IqmDz = 
 
   //Serial.println(JDz);
@@ -177,6 +185,12 @@ void tampil(){
   lcd.print("I:");
   //lcd.setCursor(19, 1);
   lcd.print(Iqm);
+
+  lcd.setCursor(0, 3);
+  lcd.print(WiFi.localIP());
+  lcd.setCursor(14, 3);
+  lcd.print(WiFi.RSSI());
+  lcd.print("dBm");
 }
 
 void debug() {
