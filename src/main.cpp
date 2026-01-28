@@ -2,8 +2,8 @@
 
 #include <Arduino.h>
 
-#include <ESP8266WiFi.h>
-const char* ssid = "37L3"; const char* password = "74737970";
+//#include <ESP8266WiFi.h>
+//const char* ssid = "37L4"; const char* password = "74737970";
 
 #include <LiquidCrystal_I2C.h>
 LiquidCrystal_I2C lcd(0x27,20,4);
@@ -84,6 +84,7 @@ void setup()
   pinMode(ledPin, OUTPUT);
 
   Serial.begin(9600);
+  Serial.println("EFST Announcer V2");
 
   rtc.begin();
   delay(100);
@@ -95,9 +96,12 @@ void setup()
   lcd.setCursor(0,0);
   lcd.print("EFST Announcer V2");
 
-  WiFi.begin(ssid, password);
-  Serial.print("Menghubungkan ke WiFi"); while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-  Serial.print("IP Address: "); Serial.println(WiFi.localIP());
+  //WiFi.mode(WIFI_STA);
+  //WiFi.begin(ssid, password);
+  //WiFi.setAutoReconnect(true);
+  //WiFi.persistent(true);
+  //Serial.print("Menghubungkan ke WiFi"); while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  //Serial.print("IP Address: "); Serial.println(WiFi.localIP());
 
   //blm autocalculate when day change
   now = rtc.now();
@@ -185,13 +189,14 @@ void tampil(){
   lcd.print("I:");
   //lcd.setCursor(19, 1);
   lcd.print(Iqm);
-
+  /*
   lcd.setCursor(0, 3);
   lcd.print(WiFi.localIP());
   lcd.setCursor(14, 3);
   lcd.print(WiFi.RSSI());
   lcd.print("dBm");
-}
+  */
+  }
 
 void debug() {
   //DateTime now = rtc.now();
